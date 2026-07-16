@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>真納視覺文化 — 大型戶外電視廣告招商</title>
+  <meta name="description" content="大型戶外電視廣告版位招商中，洽詢真納視覺文化股份有限公司：04-2472-2099。" />
+  <style>
+    :root,
+    .sw-root {
+      --sw-bg: #090909;
+      --sw-ink: #ffffff;
+      --sw-ink-soft: #d3d3d3;
+      --sw-accent: #ff2b2b;
+      --sw-font-display: "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+      --sw-font-body: "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+    }
+
+    body {
+      min-height: 100%;
+    }
+
+    .sw-root .sw-copylayer::before {
+      right: 0;
+      left: auto;
+      background: linear-gradient(
+        270deg,
+        rgba(5, 9, 12, 0.94) 0%,
+        rgba(5, 9, 12, 0.78) 34%,
+        rgba(5, 9, 12, 0.24) 64%,
+        transparent 100%
+      );
+    }
+
+    .sw-root .sw-copy {
+      right: clamp(42px, 6vw, 82px);
+      left: auto;
+      padding-right: clamp(18px, 2vw, 28px);
+      border-right: 4px solid #ff2b2b;
+      text-align: right;
+    }
+
+    .sw-root .sw-copy__eyebrow {
+      letter-spacing: 0.24em;
+    }
+
+    .sw-root .sw-copy__title {
+      max-width: 10ch;
+      margin-left: auto;
+      font-size: clamp(2.8rem, 5.2vw, 5.4rem);
+      line-height: 0.94;
+      letter-spacing: -0.045em;
+    }
+
+    .sw-root .sw-copy__body {
+      margin-left: auto;
+    }
+
+    .sw-root .sw-copy__tags li {
+      color: #fff;
+      background: rgba(255, 43, 43, 0.16);
+      border-color: rgba(255, 43, 43, 0.46);
+    }
+
+    .sw-root .sw-copy__tags,
+    .sw-root .sw-copy__cta {
+      justify-content: flex-end;
+    }
+
+    .sw-root .sw-brand__mark {
+      width: 30px;
+      height: 12px;
+      border-radius: 1px;
+      background: #ff2b2b;
+      box-shadow: 0 0 0 5px rgba(255, 43, 43, 0.14);
+    }
+
+    .sw-root .sw-topcta,
+    .sw-root .sw-btn--primary {
+      color: #fff;
+      background: #ff2b2b;
+    }
+
+    @media (max-width: 860px) {
+      .sw-root .sw-copylayer::before {
+        background: linear-gradient(
+          0deg,
+          rgba(5, 9, 12, 0.96) 6%,
+          rgba(5, 9, 12, 0.7) 48%,
+          transparent 100%
+        );
+      }
+    }
+
+    @media (max-width: 600px) and (orientation: portrait) {
+      .sw-root .sw-scene__video,
+      .sw-root .sw-scene__still {
+        object-position: 19% 50%;
+      }
+
+      .sw-root .sw-copy {
+        right: clamp(18px, 5vw, 32px);
+        left: clamp(18px, 5vw, 32px);
+        padding-right: 18px;
+      }
+
+      .sw-root .sw-copy__title {
+        font-size: clamp(2.25rem, 10vw, 3.4rem);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="top"></div>
+  <main id="world">
+    <section data-sw-seo>
+      <h1>讓品牌，站上城市視線</h1>
+      <p>大型戶外電視廣告版位招商中，由真納視覺文化股份有限公司提供洽詢服務。</p>
+      <p><a href="tel:0424722099">洽詢電話：04-2472-2099</a></p>
+    </section>
+  </main>
+
+  <script src="scrub-engine.js"></script>
+  <script>
+    mountScrollWorld(document.getElementById('world'), {
+      brand: { name: '真納視覺文化', href: '#top' },
+      cta: { label: '洽詢 04-2472-2099', href: 'tel:0424722099' },
+      hint: '向下捲動進入現場',
+      nav: false,
+      atmosphere: false,
+      diveScroll: 2.2,
+      scrollMobileFactor: 1.25,
+      crossfade: 0.08,
+      sections: [
+        {
+          id: 'city-flight',
+          label: '大型戶外電視',
+          still: 'assets/city-flight-still.webp',
+          poster: 'assets/city-flight-poster.webp',
+          clip: 'assets/vid/city-flight.mp4',
+          clipMobile: 'assets/vid/city-flight-m.mp4',
+          posterMobile: 'assets/city-flight-poster-m.webp',
+          accent: '#ff2b2b',
+          scroll: 2.2,
+          linger: 0.08,
+          eyebrow: '大型戶外電視・廣告招商',
+          title: '讓品牌，站上城市視線',
+          body: '真納視覺文化股份有限公司提供大型戶外電視廣告版位洽詢，讓品牌訊息進入城市日常。',
+          tags: ['攝影', '設計', '印刷'],
+          cta: {
+            primary: { label: '洽詢 04-2472-2099', href: 'tel:0424722099' }
+          }
+        }
+      ],
+      connectors: [],
+      connectorsMobile: []
+    });
+  </script>
+</body>
+</html>
