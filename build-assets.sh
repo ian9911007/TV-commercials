@@ -23,16 +23,15 @@ fi
 
 if [ ! -s "$ASSETS/vid/$NAME.mp4" ]; then
   ffmpeg -v error -y -i "$WORK/clip-$NAME.mp4" -an \
-    -vf "unsharp=5:5:0.8:5:5:0.0" \
-    -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p \
+    -c:v libx264 -preset slow -crf 23 -pix_fmt yuv420p \
     -g 8 -keyint_min 8 -sc_threshold 0 -movflags +faststart \
     "$ASSETS/vid/$NAME.mp4"
 fi
 
 if [ ! -s "$ASSETS/vid/$NAME-m.mp4" ]; then
   ffmpeg -v error -y -i "$WORK/clip-$NAME.mp4" -an \
-    -vf "scale=-2:720,unsharp=5:5:0.6:5:5:0.0" \
-    -c:v libx264 -preset slow -crf 23 -pix_fmt yuv420p \
+    -vf "scale=-2:720" \
+    -c:v libx264 -preset slow -crf 26 -pix_fmt yuv420p \
     -g 4 -keyint_min 4 -sc_threshold 0 -movflags +faststart \
     "$ASSETS/vid/$NAME-m.mp4"
 fi

@@ -23,6 +23,7 @@
 
     .sw-root .sw-copylayer {
       --copy-gradient-opacity: 1;
+      --copy-accent-opacity: 1;
     }
 
     .sw-root .sw-copylayer::before {
@@ -43,9 +44,13 @@
       right: clamp(42px, 6vw, 82px);
       left: auto;
       padding-right: clamp(18px, 2vw, 28px);
-      border-right: 4px solid #ff2b2b;
+      border-right: 4px solid rgb(255 43 43 / var(--copy-accent-opacity));
       text-align: right;
       opacity: 1 !important;
+    }
+
+    .sw-root .sw-route {
+      display: none;
     }
 
     .sw-root .sw-copy > * {
@@ -116,11 +121,11 @@
 
     @media (max-width: 600px) and (orientation: portrait) {
       .sw-root .sw-scene__still {
-        object-position: 50% 50%;
+        object-position: 45.5% 50%;
       }
 
       .sw-root .sw-scene__video {
-        left: 50%;
+        left: 61.5%;
         right: auto;
         width: auto;
         max-width: none;
@@ -169,13 +174,14 @@
       hint: '向下捲動進入現場',
       nav: false,
       atmosphere: false,
+      streamVideo: true,
       diveScroll: 2.2,
       scrollMobileFactor: 1.25,
       crossfade: 0.08,
       sections: [
         {
           id: 'city-flight',
-          label: '大型戶外電視',
+          label: '',
           still: 'assets/city-flight-still.webp',
           poster: 'assets/city-flight-poster.webp',
           clip: 'assets/vid/city-flight.mp4',
@@ -227,10 +233,12 @@
         const eased = local * local * (3 - 2 * local);
         const copyLayer = document.querySelector('.sw-copylayer');
         if (copyLayer) {
+          const opacity = (1 - eased).toFixed(3);
           copyLayer.style.setProperty(
             '--copy-gradient-opacity',
-            (1 - eased).toFixed(3)
+            opacity
           );
+          copyLayer.style.setProperty('--copy-accent-opacity', opacity);
         }
       }
 

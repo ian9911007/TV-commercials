@@ -78,7 +78,7 @@
      crawlers, link previews, and no-JS visitors (see index-template.html).
 
    REQUIREMENTS ON YOUR ASSETS
-     - clips encoded native-res, crf~20, -g 8, +faststart, no audio (see pipeline.md)
+     - clips encoded native-res, web-tuned CRF, dense GOP, +faststart, no audio (see pipeline.md)
      - connectors' endpoints are the neighbouring dives' ACTUAL frames (Architecture B protocol)
      - posters extracted from the ENCODED clips' first frames (pipeline.md §5b)
      - (optional) mobile variants at ~720p, -g 4 for smoother phone scrubbing
@@ -257,7 +257,9 @@ function mountScrollWorld(container, config) {
     SEGMENTS.forEach(s => {
       if (s.video) {
         try { s.video.pause(); } catch (e) {}
-        try { URL.revokeObjectURL(s.video.src); } catch (e) {}
+        if (s.video.dataset.blobUrl === '1') {
+          try { URL.revokeObjectURL(s.video.src); } catch (e) {}
+        }
         s.video.remove();
       }
       s.el.classList.remove('has-clip');
@@ -273,21 +275,44 @@ function mountScrollWorld(container, config) {
     // Serve the lighter mobile encode on phone-class devices when one was provided
     // (tablets and desktops get the full master — see phoneClass above).
     const url = (isPhone() && s.clipM) ? s.clipM : s.clip;
+
+    function attachVideo(src, blobUrl) {
+      const v = document.createElement('video');
+      v.className = 'sw-scene__video';
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+      v.dataset.blobUrl = blobUrl ? '1' : '0';
+      v.addEventListener('loadedmetadata', () => {
+        // If the user scrolled while the media was loading, start at the newest
+        // target immediately instead of easing forward from frame zero.
+        s.cur = s.target;
+        const t = clamp(s.cur, 0, 0.999) * (v.duration || 1);
+        if (Math.abs(v.currentTime - t) > 0.001) {
+          try { v.currentTime = t; } catch (e) {}
+        }
+        s.ready = true;
+        read();
+      });
+      // Reveal the video (hide the still poster) only once a real frame has
+      // painted — on iOS a seeked-but-never-played muted video stays blank, so
+      // hiding the still on metadata alone would flash an empty scene.
+      v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
+      v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
+      v.addEventListener('error', () => { s.loading = false; }, { once: true });
+      v.src = src;
+      s.el.appendChild(v); s.video = v; s.hasClip = true;
+    }
+
+    // Known range-capable hosts can stream directly and seek before the full file
+    // downloads. Blob mode remains the portable fallback for hosts without ranges.
+    if (config.streamVideo === true) {
+      attachVideo(url, false);
+      return;
+    }
+
     fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
-      .then(blob => {
-        const v = document.createElement('video');
-        v.className = 'sw-scene__video';
-        v.muted = true; v.playsInline = true; v.preload = 'auto';
-        v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-        v.src = URL.createObjectURL(blob);
-        v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
-        // Reveal the video (hide the still poster) only once a real frame has
-        // painted — on iOS a seeked-but-never-played muted video stays blank, so
-        // hiding the still on metadata alone would flash an empty scene.
-        v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
-        v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
-        s.el.appendChild(v); s.video = v; s.hasClip = true;
-      }).catch(() => { s.loading = false; });
+      .then(blob => { attachVideo(URL.createObjectURL(blob), true); })
+      .catch(() => { s.loading = false; });
   }
 
   function read() {
@@ -309,9 +334,12 @@ function mountScrollWorld(container, config) {
       const op = smooth(1 - outside / fade);
       s.el.style.opacity = op; s.visible = op > 0.001;
       s.el.style.zIndex = (i === ci) ? '120' : String(100 + Math.round(op * 10));
-      if (!s.hasClip || !s.ready) {
-        const sc = reduce ? 1 : 1.03 + local * 0.14;
-        s.img.style.transform = `translateX(${stageX - 2}vw) scale(${sc.toFixed(3)})`;
+      if (!s.hasClip || !s.ready || !s.el.classList.contains('has-clip')) {
+        // A loading poster is a stationary placeholder, never fake camera motion.
+        // Keep the scrub cursor aligned so the first decoded frame opens at the
+        // current scroll position instead of catching up from zero.
+        s.cur = s.target;
+        s.img.style.transform = 'none';
       }
     }
 

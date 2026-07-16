@@ -11,9 +11,12 @@
 - 正規化檔：`.work/clip-city-flight.mp4`
 - 桌面主檔：`assets/vid/city-flight.mp4`
 - 手機檔：`assets/vid/city-flight-m.mp4`
+- 桌面主檔規格：`CRF 23`、`GOP 8`、約 `17.4 MiB`
+- 手機檔規格：`CRF 26`、`GOP 4`、約 `6.8 MiB`
+- 網頁播放方式：HTTP Range 串流，`streamVideo: true`
 - 桌面海報：`assets/city-flight-poster.webp`
 - 手機海報：`assets/city-flight-poster-m.webp`
 - 靜態 fallback：`assets/city-flight-still.webp`
 - 連接片：無
 - SSIM 接縫檢查：不適用，單一場景沒有相鄰接縫
-- 直式資產：未生成；手機使用 16:9 輕量版，直式視窗全程固定中央 `50%` 裁切，無左右位移或捲動縮放
+- 直式資產：未生成；手機使用 16:9 輕量版，直式視窗使用固定 `+11.5vw` 右移補償對齊電視，無動態左右位移或捲動縮放
