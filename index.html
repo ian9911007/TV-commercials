@@ -16,6 +16,10 @@
       --sw-font-body: "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
     }
 
+    :root {
+      --mobile-focus-x: 81%;
+    }
+
     body {
       min-height: 100%;
     }
@@ -95,7 +99,7 @@
     @media (max-width: 600px) and (orientation: portrait) {
       .sw-root .sw-scene__video,
       .sw-root .sw-scene__still {
-        object-position: 19% 50%;
+        object-position: var(--mobile-focus-x) 50%;
       }
 
       .sw-root .sw-copy {
@@ -155,6 +159,57 @@
       connectors: [],
       connectorsMobile: []
     });
+
+    (() => {
+      const focusStops = [
+        { progress: 0, focus: 81 },
+        { progress: 0.5, focus: 50 },
+        { progress: 0.75, focus: 43 },
+        { progress: 1, focus: 19 }
+      ];
+      let focusFramePending = false;
+
+      function getTrackedFocus(progress) {
+        for (let index = 1; index < focusStops.length; index += 1) {
+          const next = focusStops[index];
+          if (progress > next.progress) continue;
+          const previous = focusStops[index - 1];
+          const span = next.progress - previous.progress;
+          const local = Math.min(
+            1,
+            Math.max(0, (progress - previous.progress) / span)
+          );
+          const eased = local * local * (3 - 2 * local);
+          return previous.focus + (next.focus - previous.focus) * eased;
+        }
+        return focusStops[focusStops.length - 1].focus;
+      }
+
+      function updateMobileFocus() {
+        const maxScroll = Math.max(
+          1,
+          document.documentElement.scrollHeight - window.innerHeight
+        );
+        const progress = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+        const focus = getTrackedFocus(progress);
+        document.documentElement.style.setProperty(
+          '--mobile-focus-x',
+          `${focus.toFixed(2)}%`
+        );
+        focusFramePending = false;
+      }
+
+      function scheduleMobileFocus() {
+        if (focusFramePending) return;
+        focusFramePending = true;
+        window.requestAnimationFrame(updateMobileFocus);
+      }
+
+      window.addEventListener('scroll', scheduleMobileFocus, { passive: true });
+      window.addEventListener('resize', scheduleMobileFocus);
+      window.addEventListener('orientationchange', scheduleMobileFocus);
+      updateMobileFocus();
+    })();
   </script>
 </body>
 </html>
