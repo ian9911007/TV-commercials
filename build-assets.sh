@@ -4,7 +4,7 @@ set -eu
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 WORK="$PROJECT_DIR/.work"
 ASSETS="$PROJECT_DIR/assets"
-SOURCE="/Users/ianchen/Desktop/Timeline 1.mov"
+SOURCE="/Users/ianchen/Desktop/Timeline 2.mov"
 NAME="city-flight"
 FPS=30
 

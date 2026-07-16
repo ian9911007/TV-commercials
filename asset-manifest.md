@@ -6,7 +6,7 @@
 - 客戶：`真納視覺文化股份有限公司`
 - 招商電話：`04-2472-2099`
 - 視覺主色：`#ff2b2b`
-- 原始檔：`/Users/ianchen/Desktop/Timeline 1.mov`
+- 原始檔：`/Users/ianchen/Desktop/Timeline 2.mov`
 - 工作副本：`.work/source-city-flight.mov`
 - 正規化檔：`.work/clip-city-flight.mp4`
 - 桌面主檔：`assets/vid/city-flight.mp4`

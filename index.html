@@ -44,6 +44,11 @@
       padding-right: clamp(18px, 2vw, 28px);
       border-right: 4px solid #ff2b2b;
       text-align: right;
+      opacity: 1 !important;
+    }
+
+    .sw-root .sw-copy > * {
+      will-change: opacity, transform;
     }
 
     .sw-root .sw-copy__eyebrow {
@@ -129,11 +134,6 @@
         right: clamp(18px, 5vw, 32px);
         left: clamp(18px, 5vw, 32px);
         padding-right: 18px;
-        opacity: 1 !important;
-      }
-
-      .sw-root .sw-copy > * {
-        will-change: opacity, transform;
       }
 
       .sw-root .sw-copy__eyebrow,
@@ -227,20 +227,10 @@
         return focusStops[focusStops.length - 1].focus;
       }
 
-      function updateMobileCopyExit(progress) {
-        const isMobilePortrait = window.matchMedia(
-          '(max-width: 600px) and (orientation: portrait)'
-        ).matches;
-
+      function updateCopyExit(progress) {
         copyExitStops.forEach(({ selector, start, end }) => {
           const element = document.querySelector(selector);
           if (!element) return;
-          if (!isMobilePortrait) {
-            element.style.removeProperty('opacity');
-            element.style.removeProperty('transform');
-            return;
-          }
-
           const local = Math.min(
             1,
             Math.max(0, (progress - start) / (end - start))
@@ -272,7 +262,7 @@
           '--mobile-pan-x',
           `${panX.toFixed(2)}px`
         );
-        updateMobileCopyExit(progress);
+        updateCopyExit(progress);
         focusFramePending = false;
       }
 
