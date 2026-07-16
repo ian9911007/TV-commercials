@@ -37,32 +37,6 @@ if [ ! -s "$ASSETS/vid/$NAME-m.mp4" ]; then
     "$ASSETS/vid/$NAME-m.mp4"
 fi
 
-FRAME_DIR="$WORK/frames-$NAME"
-SHEET_DIR="$WORK/sprites-$NAME"
-SPRITE_ASSETS="$ASSETS/sprites"
-mkdir -p "$FRAME_DIR" "$SHEET_DIR" "$SPRITE_ASSETS"
-
-if [ ! -s "$FRAME_DIR/$NAME-0239.png" ]; then
-  ffmpeg -v error -y -i "$ASSETS/vid/$NAME-m.mp4" \
-    -vf "fps=$FPS,scale=960:-2" "$FRAME_DIR/$NAME-%04d.png"
-fi
-
-if [ ! -s "$SHEET_DIR/$NAME-sheet-15.png" ]; then
-  ffmpeg -v error -y -framerate "$FPS" \
-    -i "$FRAME_DIR/$NAME-%04d.png" \
-    -vf "tile=4x4:padding=0:margin=0" -fps_mode vfr \
-    "$SHEET_DIR/$NAME-sheet-%02d.png"
-fi
-
-if [ ! -s "$SPRITE_ASSETS/$NAME-sheet-15.webp" ]; then
-  for sheet in "$SHEET_DIR"/$NAME-sheet-*.png; do
-    base=${sheet##*/}
-    base=${base%.png}
-    cwebp -quiet -q 72 -m 4 "$sheet" \
-      -o "$SPRITE_ASSETS/$base.webp"
-  done
-fi
-
 if [ ! -s "$WORK/poster-$NAME.png" ]; then
   ffmpeg -v error -y -ss 0 -i "$ASSETS/vid/$NAME.mp4" \
     -frames:v 1 -q:v 2 "$WORK/poster-$NAME.png"

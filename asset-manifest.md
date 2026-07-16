@@ -11,8 +11,6 @@
 - 正規化檔：`.work/clip-city-flight.mp4`
 - 桌面主檔：`assets/vid/city-flight.mp4`
 - 手機檔：`assets/vid/city-flight-m.mp4`
-- 手機逐格序列：`assets/sprites/city-flight-sheet-01.webp` 至 `city-flight-sheet-15.webp`
-- 手機逐格規格：`239` 格、`30 fps` 來源、每張 `4×4` 格、單格 `960×540`
 - 桌面海報：`assets/city-flight-poster.webp`
 - 手機海報：`assets/city-flight-poster-m.webp`
 - 靜態 fallback：`assets/city-flight-still.webp`

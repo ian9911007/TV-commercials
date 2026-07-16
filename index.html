@@ -179,17 +179,6 @@
           poster: 'assets/city-flight-poster.webp',
           clip: 'assets/vid/city-flight.mp4',
           clipMobile: 'assets/vid/city-flight-m.mp4',
-          frameSequenceMobile: {
-            prefix: 'assets/sprites/city-flight-sheet-',
-            sheets: 15,
-            digits: 2,
-            extension: 'webp',
-            frameCount: 239,
-            columns: 4,
-            rows: 4,
-            frameWidth: 960,
-            frameHeight: 540
-          },
           posterMobile: 'assets/city-flight-poster-m.webp',
           accent: '#ff2b2b',
           scroll: 2.2,
@@ -269,7 +258,6 @@
         );
         const progress = Math.min(1, Math.max(0, window.scrollY / maxScroll));
         const focus = getTrackedFocus(progress);
-        window.dispatchEvent(new CustomEvent('sw-mobile-focus', { detail: focus }));
         document.documentElement.style.setProperty(
           '--mobile-focus-x',
           `${focus.toFixed(2)}%`
