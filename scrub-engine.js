@@ -100,6 +100,9 @@ function mountScrollWorld(container, config) {
   // hardening above still on. screen.* is stable across rotation and window resizes;
   // a phone's short side is ≤ ~500 CSS px, tablets start at 744.
   const phoneClass = Math.min(screen.width, screen.height) <= 600;
+  // Viewport fallback keeps responsive previews and narrow embedded browsers on the
+  // same lightweight renderer even when screen.* still reports the host display.
+  const isPhone = () => phoneClass || Math.min(window.innerWidth, window.innerHeight) <= 600;
   // Network signals are Chromium-only (iOS/Safari/Firefox expose nothing) — treat them
   // strictly as a *downgrade* signal on top of a conservative default, never as a gate
   // for the good experience.
@@ -129,6 +132,7 @@ function mountScrollWorld(container, config) {
   const SEGMENTS = [];
   SECTIONS.forEach((s, i) => {
     const dive = { kind: 'dive', si: i, clip: s.clip, clipM: s.clipMobile, still: s.still,
+                   framesM: s.frameSequenceMobile,
                    poster: s.poster, posterM: s.posterMobile,
                    accent: s.accent, w: s.scroll || DIVE_W, linger: s.linger || 0 };
     SEGMENTS.push(dive);
@@ -187,11 +191,12 @@ function mountScrollWorld(container, config) {
     // so the still→video swap can't pop) — matching the encode the device will get.
     // In stills mode the clip never loads, so the higher-fidelity source still is the
     // better permanent image.
-    const pref = phoneClass ? (s.posterM || s.poster) : s.poster;
+    const pref = isPhone() ? (s.posterM || s.poster) : s.poster;
     const posterSrc = (!stillsOnly && pref) ? pref : s.still;
     if (posterSrc) img.src = posterSrc;
     scene.appendChild(img); stage.appendChild(scene);
-    s.el = scene; s.img = img; s.video = null; s.hasClip = false;
+    s.el = scene; s.img = img; s.video = null; s.canvas = null; s.hasClip = false;
+    s.spriteCache = new Map(); s.pendingFrame = 0; s.drawnFrame = -1; s.drawnFocus = -1;
     s.loading = false; s.ready = false; s.cur = 0; s.target = 0; s.visible = false;
   });
 
@@ -221,6 +226,10 @@ function mountScrollWorld(container, config) {
   // ---- math ----
   const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
   const smooth = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+  let trackedMobileFocus = null;
+  window.addEventListener('sw-mobile-focus', event => {
+    trackedMobileFocus = Number(event.detail);
+  });
   // Per-section dwell: monotone remap of scroll→time so the camera settles mid-scene
   // (where the copy peaks) and moves quicker near the seams. L=0 linear, L=1 full
   // mid-scene pause. f(0)=0, f(1)=1 always, so seam frames are untouched.
@@ -257,18 +266,129 @@ function mountScrollWorld(container, config) {
         try { URL.revokeObjectURL(s.video.src); } catch (e) {}
         s.video.remove();
       }
+      if (s.canvas) s.canvas.remove();
+      s.spriteCache.forEach(img => { img.src = ''; });
+      s.spriteCache.clear();
       s.el.classList.remove('has-clip');
-      s.video = null; s.hasClip = false; s.ready = false; s.loading = false;
+      s.video = null; s.canvas = null; s.hasClip = false; s.ready = false; s.loading = false;
+      s.pendingFrame = 0; s.drawnFrame = -1; s.drawnFocus = -1;
     });
     read();
   }
 
+  function spriteUrl(spec, sheetIndex) {
+    const n = String(sheetIndex + 1).padStart(spec.digits || 2, '0');
+    return `${spec.prefix}${n}.${spec.extension || 'webp'}`;
+  }
+
+  function ensureSprite(s, sheetIndex) {
+    const spec = s.framesM;
+    if (!spec || sheetIndex < 0 || sheetIndex >= spec.sheets) return null;
+    if (s.spriteCache.has(sheetIndex)) return s.spriteCache.get(sheetIndex);
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      if (s.pendingFrame != null) drawSpriteFrame(s, s.pendingFrame);
+    };
+    img.src = spriteUrl(spec, sheetIndex);
+    s.spriteCache.set(sheetIndex, img);
+    return img;
+  }
+
+  function pruneSprites(s, activeSheet) {
+    s.spriteCache.forEach((img, index) => {
+      if (Math.abs(index - activeSheet) <= 1) return;
+      img.src = '';
+      s.spriteCache.delete(index);
+    });
+  }
+
+  function mobileFocus() {
+    if (Number.isFinite(trackedMobileFocus)) return clamp(trackedMobileFocus, 0, 100);
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue('--mobile-focus-x');
+    const value = parseFloat(raw);
+    return Number.isFinite(value) ? clamp(value, 0, 100) : 50;
+  }
+
+  function drawSpriteFrame(s, frameIndex) {
+    const spec = s.framesM;
+    if (!spec || !s.canvas) return false;
+    frameIndex = Math.max(0, Math.min(spec.frameCount - 1, frameIndex));
+    const perSheet = spec.columns * spec.rows;
+    const sheetIndex = Math.floor(frameIndex / perSheet);
+    const tileIndex = frameIndex % perSheet;
+    const img = ensureSprite(s, sheetIndex);
+    if (!img || !img.complete || !img.naturalWidth) {
+      s.pendingFrame = frameIndex;
+      return false;
+    }
+
+    const canvas = s.canvas;
+    const cssW = canvas.clientWidth || window.innerWidth;
+    const cssH = canvas.clientHeight || window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    const outW = Math.max(1, Math.round(cssW * dpr));
+    const outH = Math.max(1, Math.round(cssH * dpr));
+    if (canvas.width !== outW || canvas.height !== outH) {
+      canvas.width = outW;
+      canvas.height = outH;
+    }
+
+    const sourceW = spec.frameWidth;
+    const sourceH = spec.frameHeight;
+    const visibleW = Math.min(sourceW, sourceH * (cssW / cssH));
+    const focus = mobileFocus();
+    const cropX = Math.max(0, (sourceW - visibleW) * (focus / 100));
+    const col = tileIndex % spec.columns;
+    const row = Math.floor(tileIndex / spec.columns);
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.drawImage(
+      img,
+      col * sourceW + cropX,
+      row * sourceH,
+      visibleW,
+      sourceH,
+      0,
+      0,
+      outW,
+      outH
+    );
+
+    s.pendingFrame = null;
+    s.drawnFrame = frameIndex;
+    s.drawnFocus = focus;
+    s.ready = true;
+    s.el.classList.add('has-clip');
+    ensureSprite(s, sheetIndex - 1);
+    ensureSprite(s, sheetIndex + 1);
+    pruneSprites(s, sheetIndex);
+    return true;
+  }
+
+  function loadSpriteSequence(s) {
+    if (!s.framesM || s.canvas) return;
+    s.loading = true;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'sw-scene__canvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    s.el.appendChild(canvas);
+    s.canvas = canvas;
+    s.hasClip = true;
+    ensureSprite(s, 0);
+  }
+
   function loadClip(s) {
-    if (stillsOnly || s.loading || !s.clip) return;
+    if (stillsOnly || s.loading) return;
+    if (isPhone() && s.framesM) {
+      loadSpriteSequence(s);
+      return;
+    }
+    if (!s.clip) return;
     s.loading = true;
     // Serve the lighter mobile encode on phone-class devices when one was provided
     // (tablets and desktops get the full master — see phoneClass above).
-    const url = (phoneClass && s.clipM) ? s.clipM : s.clip;
+    const url = (isPhone() && s.clipM) ? s.clipM : s.clip;
     fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
       .then(blob => {
         const v = document.createElement('video');
@@ -344,6 +464,19 @@ function mountScrollWorld(container, config) {
     const eps = isMobile() ? 0.02 : 0.008;   // coarser seek step on phones = fewer decodes
     for (let i = 0; i < NSEG; i++) {
       const s = SEGMENTS[i];
+      if (s.canvas && s.framesM) {
+        if (!s.visible && Math.abs(s.cur - s.target) < 0.002 && s.ready) continue;
+        s.cur += (s.target - s.cur) * (reduce ? 1 : 0.16);
+        const frame = Math.min(
+          s.framesM.frameCount - 1,
+          Math.floor(clamp(s.cur, 0, 0.999999) * s.framesM.frameCount)
+        );
+        const focus = mobileFocus();
+        if (frame !== s.drawnFrame || Math.abs(focus - s.drawnFocus) > 0.05) {
+          drawSpriteFrame(s, frame);
+        }
+        continue;
+      }
       if (!s.hasClip || !s.ready || !s.video) continue;
       // Never queue a seek while the decoder is still resolving the last one.
       // On phones a fast flick would otherwise pile up seeks and freeze the clip;
@@ -453,8 +586,9 @@ function injectCSS() {
   .sw-topcta{text-decoration:none;font-weight:600;font-size:.9rem;color:#fff;background:var(--sw-ink);padding:10px 20px;border-radius:999px;white-space:nowrap;}
   .sw-stage{position:fixed;inset:0;z-index:10;pointer-events:none;}
   .sw-scene{position:absolute;inset:0;opacity:0;overflow:hidden;will-change:opacity;}
-  .sw-scene__video,.sw-scene__still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 42%;}
-  .sw-scene__still{will-change:transform;} .sw-scene.has-clip .sw-scene__still{opacity:0;} .sw-scene__video{z-index:1;}
+  .sw-scene__video,.sw-scene__still,.sw-scene__canvas{position:absolute;inset:0;width:100%;height:100%;}
+  .sw-scene__video,.sw-scene__still{object-fit:cover;object-position:center 42%;}
+  .sw-scene__still{will-change:transform;} .sw-scene.has-clip .sw-scene__still{opacity:0;} .sw-scene__video,.sw-scene__canvas{z-index:1;}
   .sw-copylayer{position:fixed;inset:0;z-index:20;pointer-events:none;}
   .sw-copylayer::before{content:"";position:absolute;inset:0;width:min(58vw,780px);background:linear-gradient(90deg,var(--sw-bg) 0%,color-mix(in srgb,var(--sw-bg) 82%,transparent) 34%,color-mix(in srgb,var(--sw-bg) 40%,transparent) 62%,transparent 100%);}
   .sw-copy{position:absolute;left:clamp(18px,5vw,64px);top:50%;transform:translateY(-50%);width:min(42vw,460px);opacity:0;will-change:opacity,transform;}
