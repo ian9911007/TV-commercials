@@ -17,18 +17,19 @@
       --sw-font-body: "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
     }
 
-    :root {
-      --mobile-focus-x: 81%;
-      --mobile-pan-x: 0px;
-    }
-
     body {
       min-height: 100%;
+    }
+
+    .sw-root .sw-copylayer {
+      --copy-gradient-opacity: 1;
     }
 
     .sw-root .sw-copylayer::before {
       right: 0;
       left: auto;
+      opacity: var(--copy-gradient-opacity);
+      will-change: opacity;
       background: linear-gradient(
         270deg,
         rgba(5, 9, 12, 0.94) 0%,
@@ -115,19 +116,19 @@
 
     @media (max-width: 600px) and (orientation: portrait) {
       .sw-root .sw-scene__still {
-        object-position: var(--mobile-focus-x) 50%;
+        object-position: 50% 50%;
       }
 
       .sw-root .sw-scene__video {
+        left: 50%;
         right: auto;
         width: auto;
         max-width: none;
         height: 100%;
         object-fit: fill;
         object-position: center;
-        transform: translate3d(var(--mobile-pan-x), 0, 0);
+        transform: translate3d(-50%, 0, 0);
         backface-visibility: hidden;
-        will-change: transform;
       }
 
       .sw-root .sw-copy {
@@ -197,10 +198,6 @@
     });
 
     (() => {
-      const focusStops = [
-        { progress: 0, focus: 81 },
-        { progress: 1, focus: 19 }
-      ];
       const copyExitStops = [
         { selector: '.sw-copy__num', start: 0.04, end: 0.14 },
         { selector: '.sw-copy__eyebrow', start: 0.07, end: 0.18 },
@@ -209,23 +206,7 @@
         { selector: '.sw-copy__tags', start: 0.27, end: 0.43 },
         { selector: '.sw-copy__cta', start: 0.34, end: 0.52 }
       ];
-      let focusFramePending = false;
-
-      function getTrackedFocus(progress) {
-        for (let index = 1; index < focusStops.length; index += 1) {
-          const next = focusStops[index];
-          if (progress > next.progress) continue;
-          const previous = focusStops[index - 1];
-          const span = next.progress - previous.progress;
-          const local = Math.min(
-            1,
-            Math.max(0, (progress - previous.progress) / span)
-          );
-          const eased = local * local * (3 - 2 * local);
-          return previous.focus + (next.focus - previous.focus) * eased;
-        }
-        return focusStops[focusStops.length - 1].focus;
-      }
+      let scrollFramePending = false;
 
       function updateCopyExit(progress) {
         copyExitStops.forEach(({ selector, start, end }) => {
@@ -241,41 +222,39 @@
         });
       }
 
-      function updateMobileFocus() {
+      function updateGradientExit(progress) {
+        const local = Math.min(1, Math.max(0, (progress - 0.16) / 0.42));
+        const eased = local * local * (3 - 2 * local);
+        const copyLayer = document.querySelector('.sw-copylayer');
+        if (copyLayer) {
+          copyLayer.style.setProperty(
+            '--copy-gradient-opacity',
+            (1 - eased).toFixed(3)
+          );
+        }
+      }
+
+      function updateScrollEffects() {
         const maxScroll = Math.max(
           1,
           document.documentElement.scrollHeight - window.innerHeight
         );
         const progress = Math.min(1, Math.max(0, window.scrollY / maxScroll));
-        const focus = getTrackedFocus(progress);
-        document.documentElement.style.setProperty(
-          '--mobile-focus-x',
-          `${focus.toFixed(2)}%`
-        );
-        const mobilePortrait = window.matchMedia(
-          '(max-width: 600px) and (orientation: portrait)'
-        ).matches;
-        const mediaWidth = window.innerHeight * (16 / 9);
-        const overflow = Math.max(0, mediaWidth - window.innerWidth);
-        const panX = mobilePortrait ? -(overflow * focus) / 100 : 0;
-        document.documentElement.style.setProperty(
-          '--mobile-pan-x',
-          `${panX.toFixed(2)}px`
-        );
         updateCopyExit(progress);
-        focusFramePending = false;
+        updateGradientExit(progress);
+        scrollFramePending = false;
       }
 
-      function scheduleMobileFocus() {
-        if (focusFramePending) return;
-        focusFramePending = true;
-        window.requestAnimationFrame(updateMobileFocus);
+      function scheduleScrollEffects() {
+        if (scrollFramePending) return;
+        scrollFramePending = true;
+        window.requestAnimationFrame(updateScrollEffects);
       }
 
-      window.addEventListener('scroll', scheduleMobileFocus, { passive: true });
-      window.addEventListener('resize', scheduleMobileFocus);
-      window.addEventListener('orientationchange', scheduleMobileFocus);
-      updateMobileFocus();
+      window.addEventListener('scroll', scheduleScrollEffects, { passive: true });
+      window.addEventListener('resize', scheduleScrollEffects);
+      window.addEventListener('orientationchange', scheduleScrollEffects);
+      updateScrollEffects();
     })();
   </script>
 </body>
