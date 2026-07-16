@@ -471,8 +471,10 @@ function mountScrollWorld(container, config) {
           s.framesM.frameCount - 1,
           Math.floor(clamp(s.cur, 0, 0.999999) * s.framesM.frameCount)
         );
-        const focus = mobileFocus();
-        if (frame !== s.drawnFrame || Math.abs(focus - s.drawnFocus) > 0.05) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+        const canvasResized = s.canvas.width !== Math.round(s.canvas.clientWidth * dpr)
+          || s.canvas.height !== Math.round(s.canvas.clientHeight * dpr);
+        if (frame !== s.drawnFrame || canvasResized) {
           drawSpriteFrame(s, frame);
         }
         continue;
