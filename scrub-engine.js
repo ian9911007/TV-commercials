@@ -195,7 +195,8 @@ function mountScrollWorld(container, config) {
     if (posterSrc) img.src = posterSrc;
     scene.appendChild(img); stage.appendChild(scene);
     s.el = scene; s.img = img; s.video = null; s.hasClip = false;
-    s.loading = false; s.ready = false; s.cur = 0; s.target = 0; s.visible = false;
+    s.loading = false; s.ready = false; s.resuming = false;
+    s.cur = 0; s.target = 0; s.visible = false;
   });
 
   // per-section copy / route / nav
@@ -282,6 +283,7 @@ function mountScrollWorld(container, config) {
       v.muted = true; v.playsInline = true; v.preload = 'auto';
       v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
       v.dataset.blobUrl = blobUrl ? '1' : '0';
+      v.dataset.assetUrl = url;
       v.addEventListener('loadedmetadata', () => {
         // If the user scrolled while the media was loading, start at the newest
         // target immediately instead of easing forward from frame zero.
@@ -390,6 +392,54 @@ function mountScrollWorld(container, config) {
     requestAnimationFrame(raf);
   }
 
+  // Browsers suspend requestAnimationFrame and may park the media decoder while the
+  // page is hidden. Safari can then leave a video in a stale `seeking` state after the
+  // user returns from another app. Wake the decoder with a muted play/pause cycle and
+  // force one target-time sync whenever the page becomes active again.
+  let needsResumeGesture = false;
+  function syncSegment(s) {
+    if (!s.video || !s.ready || !Number.isFinite(s.video.duration)) return;
+    s.cur = s.target;
+    const t = clamp(s.target, 0, 0.999) * s.video.duration;
+    try { s.video.currentTime = t; } catch (e) {}
+  }
+
+  function wakeSegment(s) {
+    const v = s.video;
+    if (!v || s.resuming) return;
+    if (v.readyState < 1) {
+      try { v.load(); } catch (e) {}
+      return;
+    }
+
+    s.resuming = true;
+    const finish = () => {
+      try { v.pause(); } catch (e) {}
+      syncSegment(s);
+      s.resuming = false;
+    };
+
+    try {
+      const playAttempt = v.play();
+      if (playAttempt && playAttempt.then) playAttempt.then(finish).catch(finish);
+      else finish();
+    } catch (e) {
+      finish();
+    }
+  }
+
+  function resumeFromBackground() {
+    if (document.visibilityState === 'hidden' || stillsOnly) return;
+    ticking = false;
+    read();
+    needsResumeGesture = true;
+    SEGMENTS.forEach(wakeSegment);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      SEGMENTS.forEach(syncSegment);
+      read();
+    }));
+  }
+
   // iOS needs a user gesture before a muted video will decode/paint reliably. On the
   // first touch we prime every loaded clip (muted play→pause) so the first seek is
   // instant instead of showing a blank frame. `userReady` also makes freshly-loaded
@@ -405,12 +455,20 @@ function mountScrollWorld(container, config) {
     catch (e) {}
   }
   function onFirstGesture() {
-    if (userReady) return;
-    userReady = true;
-    SEGMENTS.forEach(s => primeVideo(s.video));
+    if (!userReady) {
+      userReady = true;
+      SEGMENTS.forEach(s => primeVideo(s.video));
+    }
+    if (needsResumeGesture) {
+      needsResumeGesture = false;
+      SEGMENTS.forEach(wakeSegment);
+    }
   }
-  window.addEventListener('pointerdown', onFirstGesture, { once: true, passive: true });
-  window.addEventListener('touchstart', onFirstGesture, { once: true, passive: true });
+  window.addEventListener('pointerdown', onFirstGesture, { passive: true });
+  window.addEventListener('touchstart', onFirstGesture, { passive: true });
+  document.addEventListener('visibilitychange', resumeFromBackground);
+  window.addEventListener('pageshow', resumeFromBackground);
+  window.addEventListener('focus', resumeFromBackground);
 
   // Particles are a per-frame cost we can't afford alongside video scrubbing on a phone.
   seedParticles(particles, reduce || coarse);
